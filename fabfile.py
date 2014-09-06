@@ -46,7 +46,6 @@ env.proj_dirname = "project"
 env.proj_path = "%s/%s" % (env.venv_path, env.proj_dirname)
 env.manage = "%s/bin/python %s/project/manage.py" % ((env.venv_path,) * 2)
 env.domains = conf.get("DOMAINS", [conf.get("LIVE_HOSTNAME", env.hosts[0])])
-env.domains_nginx = " ".join(env.domains)
 env.domains_python = ", ".join(["'%s'" % s for s in env.domains])
 env.ssl_disabled = "#" if len(env.domains) > 1 else ""
 env.repo_url = conf.get("REPO_URL", "")
@@ -68,11 +67,6 @@ env.nevercache_key = conf.get("NEVERCACHE_KEY", "")
 # also run.
 
 templates = {
-    "nginx": {
-        "local_path": "deploy/nginx.conf",
-        "remote_path": "/etc/nginx/sites-enabled/%(proj_name)s.conf",
-        "reload_command": "service nginx restart",
-    },
     "supervisor": {
         "local_path": "deploy/supervisor.conf",
         "remote_path": "/etc/supervisor/conf.d/%(proj_name)s.conf",
@@ -349,7 +343,7 @@ def install():
             sudo("update-locale %s" % locale)
             run("exit")
     sudo("apt-get update -y -q")
-    apt("nginx libjpeg-dev python-dev python-setuptools git-core "
+    apt("libjpeg-dev python-dev python-setuptools git-core "
         "postgresql libpq-dev memcached supervisor")
     sudo("easy_install pip")
     sudo("pip install virtualenv mercurial")
@@ -389,26 +383,6 @@ def create():
     psql("CREATE DATABASE %s WITH OWNER %s ENCODING = 'UTF8' "
          "LC_CTYPE = '%s' LC_COLLATE = '%s' TEMPLATE template0;" %
          (env.proj_name, env.proj_name, env.locale, env.locale))
-
-    # Set up SSL certificate.
-    if not env.ssl_disabled:
-        conf_path = "/etc/nginx/conf"
-        if not exists(conf_path):
-            sudo("mkdir %s" % conf_path)
-        with cd(conf_path):
-            crt_file = env.proj_name + ".crt"
-            key_file = env.proj_name + ".key"
-            if not exists(crt_file) and not exists(key_file):
-                try:
-                    crt_local, = glob(join("deploy", "*.crt"))
-                    key_local, = glob(join("deploy", "*.key"))
-                except ValueError:
-                    parts = (crt_file, key_file, env.domains[0])
-                    sudo("openssl req -new -x509 -nodes -out %s -keyout %s "
-                         "-subj '/CN=%s' -days 3650" % parts)
-                else:
-                    upload_template(crt_local, crt_file, use_sudo=True)
-                    upload_template(key_local, key_file, use_sudo=True)
 
     # Set up project.
     upload_template_and_reload("settings")
