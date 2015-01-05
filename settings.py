@@ -231,6 +231,10 @@ TEMPLATE_DIRS = (os.path.join(PROJECT_ROOT, "templates"),)
 ################
 
 INSTALLED_APPS = (
+    "moderna",
+    "flat",
+    "solid",
+    "nova",
     "nurc_web",
     "django.contrib.admin",
     "django.contrib.auth",
